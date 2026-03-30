@@ -168,6 +168,9 @@
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
     state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_monday
+    state: 'on'
   - condition: time
     weekday:
     - mon
@@ -198,6 +201,9 @@
   conditions:
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_wednesday
     state: 'on'
   - condition: time
     weekday:
@@ -230,6 +236,9 @@
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
     state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_friday
+    state: 'on'
   - condition: time
     weekday:
     - fri
@@ -251,21 +260,93 @@
     action: notify.family_phones
   mode: single
 
-- alias: Vacuum - Disable Schedule on Error
+- alias: Vacuum - Smart Disable Schedule on Error
   id: '1751085477323'
-  description: Disable schedule if vacuum encounters an error
+  description: >-
+    Intelligently disables only the affected scheduled days based on error type.
+    Mop-related errors (water box, water tank, cleaning pad) only disable mop days (Sunday).
+    Vacuum-related errors (dust bin, brushes, filter) only disable vacuum-only days (Tue/Thu)
+    and daily cleaning. General errors (stuck, cliff, etc.) disable everything.
   triggers:
   - entity_id: vacuum.alfonso
     to: error
     trigger: state
   actions:
-  - target:
-      entity_id: input_boolean.vacuum_schedule_daily
-    action: input_boolean.turn_off
-  - data:
-      title: "\u26A0\uFE0F Vacuum Error"
-      message: Alfonso encountered an error. Schedule has been disabled.
-    action: notify.family_phones
+  - variables:
+      error_desc: >-
+        {{ state_attr('sensor.alfonso_error', 'description') | default('Unknown error', true) }}
+      is_mop_error: >-
+        {{ 'FreshWaterBox' in error_desc or
+           'WaterTank' in error_desc or
+           'CleaningPad' in error_desc }}
+      is_vacuum_error: >-
+        {{ 'DustBin' in error_desc or
+           'MainBrush' in error_desc or
+           'SideBrush' in error_desc or
+           'Filter' in error_desc }}
+      affected_days: >-
+        {% if is_mop_error and not is_vacuum_error %}
+          mop_only
+        {% elif is_vacuum_error and not is_mop_error %}
+          vacuum_only
+        {% else %}
+          all
+        {% endif %}
+  # --- Mop-only errors: disable Sunday (mop day) ---
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ affected_days == 'mop_only' }}"
+      sequence:
+      - target:
+          entity_id: input_boolean.vacuum_schedule_sunday
+        action: input_boolean.turn_off
+      - data:
+          title: "\u26A0\uFE0F Vacuum Mop Error"
+          message: >-
+            Alfonso error: {{ error_desc.split(': ')[1] if ': ' in error_desc else error_desc }}.
+            Sunday mopping has been disabled. Vacuum-only days are unaffected.
+            Fix the issue and re-enable Sunday in the schedule.
+        action: notify.family_phones
+    # --- Vacuum-only errors: disable vacuum days (Tue/Thu) + daily cleaning ---
+    - conditions:
+      - condition: template
+        value_template: "{{ affected_days == 'vacuum_only' }}"
+      sequence:
+      - target:
+          entity_id:
+          - input_boolean.vacuum_schedule_tuesday
+          - input_boolean.vacuum_schedule_thursday
+          - input_boolean.vacuum_schedule_daily
+        action: input_boolean.turn_off
+      - data:
+          title: "\u26A0\uFE0F Vacuum Error"
+          message: >-
+            Alfonso error: {{ error_desc.split(': ')[1] if ': ' in error_desc else error_desc }}.
+            Vacuum-only days (Tue/Thu) and daily cleaning have been disabled.
+            Mop day (Sunday) is unaffected.
+            Fix the issue and re-enable the schedule.
+        action: notify.family_phones
+    # --- General/combined errors: disable everything ---
+    default:
+    - target:
+        entity_id:
+        - input_boolean.vacuum_schedule_daily
+        - input_boolean.vacuum_schedule_monday
+        - input_boolean.vacuum_schedule_tuesday
+        - input_boolean.vacuum_schedule_wednesday
+        - input_boolean.vacuum_schedule_thursday
+        - input_boolean.vacuum_schedule_friday
+        - input_boolean.vacuum_schedule_saturday
+        - input_boolean.vacuum_schedule_sunday
+      action: input_boolean.turn_off
+    - data:
+        title: "\u26A0\uFE0F Vacuum Error"
+        message: >-
+          Alfonso error: {{ error_desc.split(': ')[1] if ': ' in error_desc else error_desc }}.
+          All scheduled cleaning has been disabled.
+          Fix the issue and re-enable the schedule.
+      action: notify.family_phones
   mode: single
 
 - alias: Vacuum - Zone Schedule Sunday
@@ -283,6 +364,9 @@
   conditions:
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_sunday
     state: 'on'
   - condition: time
     weekday:
@@ -326,6 +410,9 @@
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
     state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_thursday
+    state: 'on'
   - condition: time
     weekday:
     - thu
@@ -368,6 +455,9 @@
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
     state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_tuesday
+    state: 'on'
   - condition: time
     weekday:
     - tue
@@ -403,6 +493,9 @@
   conditions:
   - condition: state
     entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_saturday
     state: 'on'
   - condition: time
     weekday:
