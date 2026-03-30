@@ -2317,6 +2317,16 @@ const cardStyles = css`
     border-color: rgba(34, 197, 94, 0.3);
   }
 
+  .schedule-day-card.error-disabled {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+    border-style: dashed;
+  }
+
+  .schedule-day-card.error-disabled .schedule-day-name {
+    color: var(--vac-accent-red);
+  }
+
   .schedule-day-card.today {
     border-color: var(--vac-accent-blue);
     box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
@@ -2378,6 +2388,15 @@ const cardStyles = css`
   .schedule-day-none {
     font-size: 11px;
     color: var(--vac-text-dim);
+  }
+
+  .schedule-day-error {
+    font-size: 10px;
+    color: var(--vac-accent-red);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.9;
   }
 
   /* Schedule Toggle Rows */
@@ -5364,6 +5383,26 @@ class VacuumDashboard extends LitElement {
       ? activeScheduledRooms.slice(0, 3).map(r => r.name.split(' ')[0]).join(', ') + (activeScheduledRooms.length > 3 ? '...' : '')
       : 'All rooms';
 
+    // Detect active errors and categorise
+    const errorState = this._getState(this.config.error_entity);
+    const errorDesc = errorState?.attributes?.description || "NoError: Robot is operational";
+    const hasActiveError = errorDesc !== "NoError: Robot is operational" &&
+                           this._getStateValue(this.config.vacuum_entity, "") === "error";
+
+    const isMopError = hasActiveError && (
+      errorDesc.includes('FreshWaterBox') || errorDesc.includes('WaterTank') || errorDesc.includes('CleaningPad')
+    );
+    const isVacuumError = hasActiveError && (
+      errorDesc.includes('DustBin') || errorDesc.includes('MainBrush') ||
+      errorDesc.includes('SideBrush') || errorDesc.includes('Filter')
+    );
+    const isGeneralError = hasActiveError && !isMopError && !isVacuumError;
+
+    // Map which days use mopping (Sunday = vacuum_and_mop)
+    const mopDays = [6]; // Sunday index (Mon=0)
+    // Map which days are vacuum-only (Tue=1, Thu=3)
+    const vacuumOnlyDays = [1, 3];
+
     // Build day schedule info
     const daySchedules = dayNames.map((name, i) => {
       const dayToggleOn = this._getStateValue(dayEntities[i], "off") === "on";
@@ -5374,9 +5413,26 @@ class VacuumDashboard extends LitElement {
       // Check if day has zone cleaning
       const hasZone = zoneAutomationOn && zoneScheduleEnabled;
 
+      // Determine if this day is disabled due to an error
+      let errorDisabled = false;
+      let errorReason = '';
+      if (hasActiveError && !dayToggleOn && zoneScheduleEnabled && zoneAutomationOn) {
+        // Day toggle is off but zone automation exists and is on - likely disabled by error
+        if (isMopError && mopDays.includes(i)) {
+          errorDisabled = true;
+          errorReason = this._formatError(errorDesc);
+        } else if (isVacuumError && vacuumOnlyDays.includes(i)) {
+          errorDisabled = true;
+          errorReason = this._formatError(errorDesc);
+        } else if (isGeneralError) {
+          errorDisabled = true;
+          errorReason = this._formatError(errorDesc);
+        }
+      }
+
       // Get zone description if available
       let zoneRooms = 'Zone cleaning';
-      if (hasZone && this.hass?.states?.[zoneAutomations[i]]) {
+      if (this.hass?.states?.[zoneAutomations[i]]) {
         const desc = this.hass.states[zoneAutomations[i]]?.attributes?.description || '';
         if (desc) {
           // Extract room names from description like "Clean bedrooms on Tuesday"
@@ -5397,7 +5453,9 @@ class VacuumDashboard extends LitElement {
         dayEntity: dayEntities[i],
         zoneEntity: zoneAutomations[i],
         zoneRooms,
-        isToday: i === todayIndex
+        isToday: i === todayIndex,
+        errorDisabled,
+        errorReason
       };
     });
 
@@ -5410,9 +5468,9 @@ class VacuumDashboard extends LitElement {
       <!-- Weekly Schedule Grid - 2 columns -->
       <div class="schedule-week-grid">
         ${daySchedules.map(day => html`
-          <div class="schedule-day-card ${day.isActive ? 'active' : ''} ${day.isToday ? 'today' : ''}">
+          <div class="schedule-day-card ${day.isActive ? 'active' : ''} ${day.errorDisabled ? 'error-disabled' : ''} ${day.isToday ? 'today' : ''}">
             <div class="schedule-day-header">
-              <span class="schedule-day-icon">${day.isActive ? '📅' : '📆'}</span>
+              <span class="schedule-day-icon">${day.errorDisabled ? '⚠️' : day.isActive ? '📅' : '📆'}</span>
               <span class="schedule-day-name ${day.isToday ? 'today-label' : ''}">${day.name}</span>
             </div>
             <div class="schedule-day-details">
@@ -5425,6 +5483,9 @@ class VacuumDashboard extends LitElement {
                     <span class="schedule-type-badge daily">🏠 ${dailyRoomNames}</span>
                   `}
                 </div>
+              ` : day.errorDisabled ? html`
+                <div class="schedule-day-error">⛔ Disabled: ${day.errorReason}</div>
+                <div class="schedule-day-none" style="margin-top: 2px;">${day.zoneRooms}</div>
               ` : html`
                 <div class="schedule-day-none">No cleaning scheduled</div>
               `}
