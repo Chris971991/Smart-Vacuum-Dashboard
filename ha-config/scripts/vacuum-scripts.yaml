@@ -1,0 +1,451 @@
+# Vacuum Dashboard - Scripts
+# ==========================
+# Extracted from Home Assistant scripts.yaml
+# These scripts are used by the vacuum dashboard card for cleaning actions,
+# schedule presets, and room management.
+
+# ==========================================
+# ROOM TESTING
+# ==========================================
+
+test_room_id:
+  alias: Test Room ID
+  fields:
+    room_id:
+      name: Room ID
+      description: Room ID to test
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 20
+          mode: box
+  sequence:
+  - data:
+      entity_id: vacuum.alfonso
+      command: app_segment
+      params:
+        segments:
+        - '{{ room_id }}'
+        cleanings: 1
+    action: vacuum.send_command
+  mode: single
+  description: ''
+
+# ==========================================
+# CORE CLEANING SCRIPTS
+# ==========================================
+
+clean_selected_rooms:
+  alias: Clean Selected Rooms
+  sequence:
+  - variables:
+      selected_rooms_string: >-
+        {% set rooms = [] %}
+        {% if is_state('input_boolean.clean_room_living_room', 'on') %}
+          {% set rooms = rooms + ['0'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_media_room', 'on') %}
+          {% set rooms = rooms + ['7'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_beauty_room', 'on') %}
+          {% set rooms = rooms + ['21'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_bathroom', 'on') %}
+          {% set rooms = rooms + ['8'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_guest_bedroom', 'on') %}
+          {% set rooms = rooms + ['23'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_office', 'on') %}
+          {% set rooms = rooms + ['17'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_entryway', 'on') %}
+          {% set rooms = rooms + ['3'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_ensuite', 'on') %}
+          {% set rooms = rooms + ['20'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_hallway', 'on') %}
+          {% set rooms = rooms + ['12'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_laundry', 'on') %}
+          {% set rooms = rooms + ['22'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_master_bedroom', 'on') %}
+          {% set rooms = rooms + ['6'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_kitchen', 'on') %}
+          {% set rooms = rooms + ['2'] %}
+        {% endif %}
+        {% if is_state('input_boolean.clean_room_master_robe', 'on') %}
+          {% set rooms = rooms + ['5'] %}
+        {% endif %}
+        {{ rooms|join(',') }}
+  - data_template:
+      entity_id: vacuum.alfonso
+      command: clean
+      params: >-
+        {
+          "act": "start",
+          "type": "spotArea",
+          "content": "{{ selected_rooms_string }}",
+          "count": 1
+        }
+    action: vacuum.send_command
+  mode: single
+
+clean_all_rooms:
+  alias: Clean All Rooms
+  sequence:
+  - action: input_boolean.turn_on
+    data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+  - action: script.clean_selected_rooms
+    data: {}
+  mode: single
+
+# ==========================================
+# VACUUM CONTROL SCRIPTS
+# ==========================================
+
+vacuum_pause_resume_toggle:
+  alias: Vacuum Pause Resume
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: vacuum.alfonso
+        state: paused
+      sequence:
+      - target:
+          entity_id: vacuum.alfonso
+        action: vacuum.start
+    default:
+    - target:
+        entity_id: vacuum.alfonso
+      action: vacuum.pause
+
+stop_vacuum_and_reset_rooms:
+  alias: Stop Vacuum and Reset Rooms
+  sequence:
+  - target:
+      entity_id: vacuum.alfonso
+    action: vacuum.stop
+  - target:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  description: ''
+
+vacuum_smart_start:
+  alias: Vacuum Smart Start
+  sequence:
+  - condition: template
+    value_template: >-
+      {{ not is_state('vacuum.alfonso', 'cleaning') and
+         not is_state('vacuum.alfonso', 'paused') }}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: >-
+          {{ [
+            states('input_boolean.clean_room_living_room'),
+            states('input_boolean.clean_room_kitchen'),
+            states('input_boolean.clean_room_master_bedroom'),
+            states('input_boolean.clean_room_guest_bedroom'),
+            states('input_boolean.clean_room_bathroom'),
+            states('input_boolean.clean_room_ensuite'),
+            states('input_boolean.clean_room_media_room'),
+            states('input_boolean.clean_room_office'),
+            states('input_boolean.clean_room_beauty_room'),
+            states('input_boolean.clean_room_entryway'),
+            states('input_boolean.clean_room_hallway'),
+            states('input_boolean.clean_room_laundry'),
+            states('input_boolean.clean_room_master_robe')
+          ] | select('eq', 'on') | list | count > 0 }}
+      sequence:
+      - action: script.clean_selected_rooms
+    default:
+    - action: script.clean_all_rooms
+
+# ==========================================
+# PRESET CLEANING SCRIPTS
+# ==========================================
+
+clean_bedrooms_only:
+  alias: Clean Bedrooms Only
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_master_robe
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_office
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+  mode: single
+  description: ''
+
+clean_living_areas:
+  alias: Clean Living Areas
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+  mode: single
+  description: ''
+
+clean_bathrooms_only:
+  alias: Clean Bathrooms Only
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+  mode: single
+  description: ''
+
+clean_kitchen_only:
+  alias: Clean Kitchen Only
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_kitchen
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+  mode: single
+  description: ''
+
+clean_tiled_areas:
+  alias: Clean Tiled Areas
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+      - input_boolean.clean_room_hallway
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_kitchen
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+    data: {}
+  mode: single
+  description: ''
+
+clean_carpet_areas:
+  alias: Clean Carpet Areas
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_kitchen
+    action: input_boolean.turn_off
+  - data:
+      entity_id:
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_on
+  - action: script.clean_selected_rooms
+    data: {}
+  mode: single
+  description: ''
+
+# ==========================================
+# SCHEDULE PRESET SCRIPTS
+# ==========================================
+
+vacuum_schedule_weekdays:
+  alias: Vacuum Schedule Weekdays
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.vacuum_schedule_monday
+      - input_boolean.vacuum_schedule_tuesday
+      - input_boolean.vacuum_schedule_wednesday
+      - input_boolean.vacuum_schedule_thursday
+      - input_boolean.vacuum_schedule_friday
+    action: input_boolean.turn_on
+  - data:
+      entity_id:
+      - input_boolean.vacuum_schedule_saturday
+      - input_boolean.vacuum_schedule_sunday
+    action: input_boolean.turn_off
+  mode: single
+  description: ''
+
+vacuum_schedule_alternate:
+  alias: Vacuum Schedule Alternate
+  sequence:
+  - data:
+      entity_id:
+      - input_boolean.vacuum_schedule_monday
+      - input_boolean.vacuum_schedule_wednesday
+      - input_boolean.vacuum_schedule_friday
+      - input_boolean.vacuum_schedule_sunday
+    action: input_boolean.turn_on
+  - data:
+      entity_id:
+      - input_boolean.vacuum_schedule_tuesday
+      - input_boolean.vacuum_schedule_thursday
+      - input_boolean.vacuum_schedule_saturday
+    action: input_boolean.turn_off
+  mode: single
+  description: ''
+
+sync_schedule_rooms_for_preview:
+  alias: Sync Schedule Rooms for Preview
+  sequence:
+  - target:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  - target:
+      entity_id: >-
+        {% set rooms = [] %}
+        {% if is_state('input_boolean.schedule_room_living_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_living_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_kitchen', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_kitchen'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_master_bedroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_master_bedroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_guest_bedroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_guest_bedroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_bathroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_bathroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_ensuite', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_ensuite'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_media_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_media_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_office', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_office'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_beauty_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_beauty_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_entryway', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_entryway'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_hallway', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_hallway'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_laundry', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_laundry'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_master_robe', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_master_robe'] %}{% endif %}
+        {{ rooms }}
+    action: input_boolean.turn_on
+  mode: single
+  description: ''

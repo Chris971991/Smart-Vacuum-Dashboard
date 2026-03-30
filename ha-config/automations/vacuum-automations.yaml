@@ -1,0 +1,628 @@
+# =============================================================================
+# Vacuum / Alfonso Automations
+# Extracted from Home Assistant automations.yaml
+# =============================================================================
+
+- alias: Set Alfonso Fan Speed from Input Select
+  id: '1746351299622'
+  description: ''
+  triggers:
+  - entity_id: input_select.alfonso_fan_speed_selector
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      entity_id: vacuum.alfonso
+      fan_speed: '{{ trigger.to_state.state }}'
+    action: vacuum.set_fan_speed
+  mode: single
+
+- alias: Reset Room Selection on Vacuum Completion
+  id: '1749949807584'
+  description: Automatically reset all room selections when vacuum finishes cleaning
+  triggers:
+  - entity_id: vacuum.alfonso
+    from: cleaning
+    to: returning
+    trigger: state
+  - entity_id: vacuum.alfonso
+    from: returning
+    to: docked
+    trigger: state
+  - entity_id: vacuum.alfonso
+    from: cleaning
+    to: docked
+    trigger: state
+  conditions: []
+  actions:
+  - target:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+  mode: single
+
+- alias: Vacuum - Scheduled Cleaning
+  id: '1751085400556'
+  description: Run vacuum at scheduled time on selected days
+  triggers:
+  - trigger: template
+    value_template: >-
+      {% set now_time = now().strftime('%H:%M:%S') %}
+      {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time_nightshift') }}
+      {% else %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time') }}
+      {% endif %}
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_schedule_daily
+    state: 'on'
+  - condition: template
+    value_template: >-
+      {% set today = now().strftime('%A').lower() %}
+      {{ is_state('input_boolean.vacuum_schedule_' ~ today, 'on') }}
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - data:
+      scene_id: vacuum_manual_rooms_backup
+      snapshot_entities:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: scene.create
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: '{{ states(''input_select.vacuum_schedule_mode'') }}'
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - target:
+      entity_id:
+      - input_boolean.clean_room_living_room
+      - input_boolean.clean_room_kitchen
+      - input_boolean.clean_room_master_bedroom
+      - input_boolean.clean_room_guest_bedroom
+      - input_boolean.clean_room_bathroom
+      - input_boolean.clean_room_ensuite
+      - input_boolean.clean_room_media_room
+      - input_boolean.clean_room_office
+      - input_boolean.clean_room_beauty_room
+      - input_boolean.clean_room_entryway
+      - input_boolean.clean_room_hallway
+      - input_boolean.clean_room_laundry
+      - input_boolean.clean_room_master_robe
+    action: input_boolean.turn_off
+    data: {}
+  - target:
+      entity_id: >-
+        {% set rooms = [] %}
+        {% if is_state('input_boolean.schedule_room_living_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_living_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_kitchen', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_kitchen'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_master_bedroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_master_bedroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_guest_bedroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_guest_bedroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_bathroom', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_bathroom'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_ensuite', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_ensuite'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_media_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_media_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_office', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_office'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_beauty_room', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_beauty_room'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_entryway', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_entryway'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_hallway', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_hallway'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_laundry', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_laundry'] %}{% endif %}
+        {% if is_state('input_boolean.schedule_room_master_robe', 'on') %}{% set rooms = rooms + ['input_boolean.clean_room_master_robe'] %}{% endif %}
+        {{ rooms }}
+    action: input_boolean.turn_on
+    data: {}
+  - action: script.clean_selected_rooms
+    data: {}
+  - delay:
+      seconds: 5
+  - target:
+      entity_id: scene.vacuum_manual_rooms_backup
+    action: scene.turn_on
+    data: {}
+  - data:
+      title: "\U0001F916 Vacuum Started"
+      message: >-
+        Alfonso has started scheduled cleaning in {{ states('input_select.vacuum_schedule_mode')
+        | replace('_', ' ') | title }} mode
+        {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        (Evening schedule - Julia on night shift)
+        {% else %}
+        (Morning schedule)
+        {% endif %}
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Monday
+  id: '1751085413239'
+  description: Clean living areas on Monday
+  triggers:
+  - at: input_datetime.vacuum_schedule_time
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - mon
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: '{{ states(''input_select.vacuum_schedule_mode'') }}'
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_living_areas
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: Alfonso is cleaning living areas (Monday schedule)
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Wednesday
+  id: '1751085443857'
+  description: Clean bedrooms on Wednesday
+  triggers:
+  - at: input_datetime.vacuum_schedule_time
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - wed
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: '{{ states(''input_select.vacuum_schedule_mode'') }}'
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_bedrooms_only
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: Alfonso is cleaning bedrooms (Wednesday schedule)
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Friday
+  id: '1751085458185'
+  description: Clean bathrooms on Friday
+  triggers:
+  - at: input_datetime.vacuum_schedule_time
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - fri
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: '{{ states(''input_select.vacuum_schedule_mode'') }}'
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_bathrooms_only
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: Alfonso is cleaning bathrooms (Friday schedule)
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Disable Schedule on Error
+  id: '1751085477323'
+  description: Disable schedule if vacuum encounters an error
+  triggers:
+  - entity_id: vacuum.alfonso
+    to: error
+    trigger: state
+  actions:
+  - target:
+      entity_id: input_boolean.vacuum_schedule_daily
+    action: input_boolean.turn_off
+  - data:
+      title: "\u26A0\uFE0F Vacuum Error"
+      message: Alfonso encountered an error. Schedule has been disabled.
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Sunday
+  id: '1751160904477'
+  description: Clean tiled floors on Sunday
+  triggers:
+  - trigger: template
+    value_template: >-
+      {% set now_time = now().strftime('%H:%M:%S') %}
+      {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time_nightshift') }}
+      {% else %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time') }}
+      {% endif %}
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - sun
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: vacuum_and_mop
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_tiled_areas
+    data: {}
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: >-
+        Alfonso is mopping the tiled floors (Sunday schedule)
+        {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        - Evening run due to nightshift
+        {% endif %}
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Thursday
+  id: '1751161594188'
+  description: Clean carpets on Thursday
+  triggers:
+  - trigger: template
+    value_template: >-
+      {% set now_time = now().strftime('%H:%M:%S') %}
+      {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time_nightshift') }}
+      {% else %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time') }}
+      {% endif %}
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - thu
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: vacuum
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_carpet_areas
+    data: {}
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: >-
+        Alfonso is vacuuming the carpets (Thursday schedule)
+        {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        - Evening run due to nightshift
+        {% endif %}
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Tuesday
+  id: '1751761420204'
+  description: Clean carpets on Tuesday
+  triggers:
+  - trigger: template
+    value_template: >-
+      {% set now_time = now().strftime('%H:%M:%S') %}
+      {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time_nightshift') }}
+      {% else %}
+        {{ now_time == states('input_datetime.vacuum_schedule_time') }}
+      {% endif %}
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - tue
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: vacuum
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_carpet_areas
+    data: {}
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: >-
+        Alfonso is vacuuming the carpets (Tuesday schedule)
+        {% if is_state('input_boolean.julia_nightshift', 'on') %}
+        - Evening run due to nightshift
+        {% endif %}
+    action: notify.family_phones
+  mode: single
+
+- alias: Vacuum - Zone Schedule Saturday
+  id: '1751761503929'
+  description: Clean living areas on Saturday
+  triggers:
+  - at: input_datetime.vacuum_schedule_time
+    trigger: time
+  conditions:
+  - condition: state
+    entity_id: input_boolean.vacuum_zone_schedule_enabled
+    state: 'on'
+  - condition: time
+    weekday:
+    - sat
+  - condition: state
+    entity_id: vacuum.alfonso
+    state: docked
+  actions:
+  - target:
+      entity_id: select.alfonso_work_mode
+    data:
+      option: '{{ states(''input_select.vacuum_schedule_mode'') }}'
+    action: select.select_option
+  - delay:
+      seconds: 2
+  - action: script.clean_living_areas
+    data: {}
+  - data:
+      title: "\U0001F916 Zone Cleaning Started"
+      message: Alfonso is cleaning living areas (Monday schedule)
+    action: notify.family_phones
+  mode: single
+
+- alias: Julia Nightshift Started
+  id: '1755823085931'
+  description: Detects when Julia's nightshift week begins from calendar and adjusts
+    vacuum schedule to evening
+  triggers:
+  - trigger: calendar
+    entity_id: calendar.juliacg109_gmail_com
+    event: start
+    offset: 0:0:0
+  conditions:
+  - condition: template
+    value_template: '{{ ''nightshift'' in trigger.calendar_event.summary|lower }}'
+  actions:
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.julia_nightshift
+  - action: notify.family_phones
+    metadata: {}
+    data:
+      title: " Julia's Nightshift Week Started"
+      message: Vacuum will now run at evening time as to not disturb Juia sleeping.
+
+- alias: Julia Nightshift Ended
+  id: '1755823166179'
+  description: Detects when Julia's nightshift week ends from calendar and returns
+    vacuum schedule to morning
+  triggers:
+  - trigger: calendar
+    entity_id: calendar.juliacg109_gmail_com
+    event: end
+    offset: 0:0:0
+  conditions:
+  - condition: template
+    value_template: '{{ ''nightshift'' in trigger.calendar_event.summary|lower }}'
+  actions:
+  - action: input_boolean.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.julia_nightshift
+  - action: notify.family_phones
+    metadata: {}
+    data:
+      title: Julia's Nightshift Week Ended
+      message: Vacuum will now run at morning time.
+  mode: single
+
+- alias: Vacuum - Update Room Cleaning History
+  id: '1766368787743'
+  description: Updates the last cleaned timestamp for rooms when vacuum completes cleaning
+  triggers:
+  - trigger: state
+    entity_id: vacuum.alfonso
+    to: docked
+    from:
+    - cleaning
+    - returning
+  - trigger: state
+    entity_id: vacuum.alfonso
+    to: returning
+    from: cleaning
+  conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state.state == 'cleaning' or
+         (trigger.to_state.state == 'docked' and trigger.from_state.state == 'returning') }}
+  actions:
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_living_room
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_living_room
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_kitchen
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_kitchen
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_master_bedroom
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_master_bedroom
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_guest_bedroom
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_guest_bedroom
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_bathroom
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_bathroom
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_ensuite
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_ensuite
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_media_room
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_media_room
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_office
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_office
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_beauty_room
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_beauty_room
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_entryway
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_entryway
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_hallway
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_hallway
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_laundry
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_laundry
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  - if:
+    - condition: state
+      entity_id: input_boolean.clean_room_master_robe
+      state: 'on'
+    then:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.vacuum_last_cleaned_master_robe
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+  mode: single

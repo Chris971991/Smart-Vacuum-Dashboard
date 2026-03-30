@@ -56,7 +56,10 @@ ha-config/
     vacuum-helpers.yaml          # All required HA input helpers
     vacuum-helpers-missing.yaml  # Delta helpers (if you have some already)
   automations/
+    vacuum-automations.yaml      # All vacuum automations (scheduling, zones, errors)
     vacuum-room-history-automation.yaml  # Room cleaning history tracking
+  scripts/
+    vacuum-scripts.yaml          # All vacuum scripts (cleaning, presets, scheduling)
 tools/
   vacuum-room-configurator.html  # Interactive room zone map configurator
 ```
