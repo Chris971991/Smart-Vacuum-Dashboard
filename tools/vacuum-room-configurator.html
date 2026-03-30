@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vacuum Room Map Configurator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(180deg, #0a0e14 0%, #111827 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #f0f0f0;
+    }
+
+    /* Header */
+    .header {
+      background: rgba(0,0,0,0.3);
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Main layout */
+    .main-container {
+      display: flex;
+      height: calc(100vh - 65px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 320px;
+      background: rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-section h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #9CA3AF;
+      margin-bottom: 12px;
+    }
+
+    /* Canvas area */
+    .canvas-area {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    .canvas-container {
+      position: relative;
+      background: #1a1f2e;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      /* Let image determine aspect ratio naturally - no forced stretching */
+      width: 100%;
+      max-width: 900px;
+      min-width: 600px;
+    }
+    .canvas-background {
+      display: block;
+      width: 100%;
+      height: auto;
+      /* Preserve image aspect ratio - no stretching */
+    }
+    .canvas-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+    }
+    .canvas-placeholder {
+      width: 100%;
+      min-height: 400px;
+      aspect-ratio: 258 / 150;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #6B7280;
+      gap: 16px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: #374151;
+      color: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background: #4B5563; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.primary { background: #3B82F6; border-color: #3B82F6; }
+    .btn.primary:hover { background: #2563EB; }
+    .btn.success { background: #059669; border-color: #059669; }
+    .btn.success:hover { background: #047857; }
+    .btn.danger { background: transparent; border-color: #EF4444; color: #FCA5A5; }
+    .btn.danger:hover { background: #7F1D1D; }
+    .btn.active { background: #1E3A5F; border-color: #3B82F6; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    /* Room buttons */
+    .room-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .room-btn {
+      padding: 10px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: #1F2937;
+      color: white;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      border-left: 3px solid;
+    }
+    .room-btn:hover { background: #374151; }
+    .room-btn.active { border-color: #3B82F6; background: #1E3A5F; }
+    .room-btn .icon { font-size: 16px; margin-right: 6px; }
+    .room-btn .label { font-size: 11px; }
+    .room-btn.has-polygon { opacity: 1; }
+    .room-btn.has-polygon::after { content: ' ✓'; color: #22C55E; }
+    .room-btn:not(.has-polygon) { opacity: 0.7; }
+
+    /* Room colors */
+    .room-btn[data-room="living_room"] { border-left-color: #3B82F6; }
+    .room-btn[data-room="kitchen"] { border-left-color: #F97316; }
+    .room-btn[data-room="media_room"] { border-left-color: #8B5CF6; }
+    .room-btn[data-room="hallway"] { border-left-color: #6B7280; }
+    .room-btn[data-room="entryway"] { border-left-color: #84CC16; }
+    .room-btn[data-room="master_bedroom"] { border-left-color: #EC4899; }
+    .room-btn[data-room="guest_bedroom"] { border-left-color: #14B8A6; }
+    .room-btn[data-room="master_robe"] { border-left-color: #F472B6; }
+    .room-btn[data-room="bathroom"] { border-left-color: #06B6D4; }
+    .room-btn[data-room="ensuite"] { border-left-color: #0EA5E9; }
+    .room-btn[data-room="laundry"] { border-left-color: #A855F7; }
+    .room-btn[data-room="office"] { border-left-color: #EAB308; }
+    .room-btn[data-room="beauty_room"] { border-left-color: #F43F5E; }
+
+    /* SVG elements */
+    .room-polygon {
+      fill-opacity: 0.25;
+      stroke-width: 0.3;
+      cursor: pointer;
+      transition: fill-opacity 0.2s;
+    }
+    .room-polygon:hover {
+      fill-opacity: 0.4;
+    }
+    .room-polygon.selected {
+      fill-opacity: 0.4;
+      stroke-width: 0.5;
+      stroke-dasharray: 1,0.5;
+    }
+    .room-label {
+      font-size: 3px;
+      font-weight: 600;
+      fill: white;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      pointer-events: none;
+      text-shadow: 0 0.5px 1px rgba(0,0,0,0.9);
+    }
+    .preview-line {
+      stroke-width: 0.3;
+      stroke-dasharray: 1,1;
+      fill: none;
+    }
+    .preview-point {
+      stroke: white;
+      stroke-width: 0.3;
+      cursor: pointer;
+      transition: r 0.15s ease;
+    }
+    .preview-point:hover {
+      r: 1.2;
+    }
+    .preview-point.first {
+      stroke-width: 0.5;
+    }
+    /* Draggable edit points for existing polygons */
+    .edit-point {
+      fill: white;
+      stroke: #3B82F6;
+      stroke-width: 0.4;
+      cursor: grab;
+      transition: r 0.15s ease, fill 0.15s ease;
+    }
+    .edit-point:hover {
+      fill: #3B82F6;
+      r: 1.2;
+    }
+    .edit-point.dragging {
+      fill: #22C55E;
+      cursor: grabbing;
+      r: 1.5;
+    }
+
+    /* Grid */
+    .grid-line {
+      stroke: rgba(255,255,255,0.15);
+      stroke-width: 0.1;
+    }
+    .grid-line.major {
+      stroke: rgba(255,255,255,0.3);
+      stroke-width: 0.2;
+    }
+
+    /* Toggle and options */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3B82F6;
+    }
+    .grid-size-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 12px;
+      color: #9CA3AF;
+    }
+    .grid-size-row select {
+      background: #374151;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      color: white;
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    /* Status bar */
+    .status-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #9CA3AF;
+      z-index: 100;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1F2937;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 12px 24px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast.error { border-color: #EF4444; }
+    .toast.success { border-color: #22C55E; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #1F2937;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+    }
+    .modal h2 { margin-bottom: 16px; }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    /* Input group */
+    .input-group {
+      margin-bottom: 12px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      color: #9CA3AF;
+      margin-bottom: 4px;
+    }
+    .input-group input, .input-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      background: #111827;
+      color: white;
+      font-size: 13px;
+    }
+    .input-group textarea {
+      height: 200px;
+      font-family: monospace;
+    }
+
+    /* Instructions */
+    .instructions {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      color: #93C5FD;
+    }
+    .instructions h4 {
+      margin-bottom: 8px;
+      color: #60A5FA;
+    }
+    .instructions ol {
+      margin-left: 16px;
+    }
+    .instructions li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🗺️ Vacuum Room Map Configurator</h1>
+    <div class="header-actions">
+      <button class="btn" onclick="clearAll()">🗑️ Clear All</button>
+      <button class="btn" onclick="showExportModal()">📋 Export YAML</button>
+      <button class="btn success" onclick="saveConfig()">💾 Save</button>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h3>🗺️ Vacuum Map</h3>
+        <p style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">
+          Map loaded from Home Assistant
+        </p>
+        <button class="btn btn-block btn-sm" onclick="reloadMap()">
+          🔄 Reload Map
+        </button>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>🏠 Rooms</h3>
+        <p style="font-size: 11px; color: #6B7280; margin-bottom: 12px;">
+          Select a room, then click on the map to draw its boundary
+        </p>
+        <div class="room-grid" id="roomGrid">
+          <!-- Rooms will be populated by JS -->
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>📖 Instructions</h3>
+        <div class="instructions">
+          <ol>
+            <li>Upload your vacuum map screenshot</li>
+            <li>Click a room button on the left</li>
+            <li>Click on the map to add polygon points</li>
+            <li>Click the first point (or double-click) to close the shape</li>
+            <li>Repeat for all rooms</li>
+            <li>Click "Export YAML" to get the config</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>⚙️ Options</h3>
+        <label class="toggle-row">
+          <input type="checkbox" id="showGridToggle" onchange="toggleGrid()">
+          <span>Show Grid</span>
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="snapToggle" checked onchange="toggleSnap()">
+          <span>Snap to Grid</span>
+        </label>
+        <div class="grid-size-row" id="gridSizeRow">
+          <span>Grid Size:</span>
+          <select id="gridSizeSelect" onchange="updateGridSize()">
+            <option value="2">2% (Fine)</option>
+            <option value="5" selected>5% (Normal)</option>
+            <option value="10">10% (Coarse)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>⚙️ Actions</h3>
+        <button class="btn btn-block btn-sm" onclick="deleteSelectedRoom()" id="deleteBtn" disabled>
+          🗑️ Delete Selected Room
+        </button>
+        <button class="btn btn-block btn-sm" onclick="undoLastPoint()" id="undoBtn" disabled style="margin-top: 8px;">
+          ↩️ Undo Last Point
+        </button>
+      </div>
+    </div>
+
+    <div class="canvas-area">
+      <div class="canvas-container" id="canvasContainer">
+        <div class="canvas-placeholder" id="placeholder">
+          <span style="font-size: 48px;">⏳</span>
+          <span>Loading vacuum map...</span>
+        </div>
+        <img id="backgroundImg" class="canvas-background" style="display:none">
+        <svg id="canvasSvg" class="canvas-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+          <g id="gridLayer"></g>
+          <g id="roomsLayer"></g>
+          <g id="labelsLayer"></g>
+          <g id="previewLayer"></g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span id="statusText">Select a room to begin drawing</span>
+    <span id="coordsText"></span>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal">
+      <h2>📋 Export Room Polygons</h2>
+      <p style="color: #9CA3AF; margin-bottom: 16px;">
+        Copy this YAML and add it to your vacuum dashboard card configuration:
+      </p>
+      <div class="input-group">
+        <textarea id="exportYaml" readonly></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">Close</button>
+        <button class="btn primary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // ROOM DEFINITIONS
+    // ============================================
+    const ROOMS = [
+      { id: 'living_room', name: 'Living Room', icon: '🛋️', color: '#3B82F6' },
+      { id: 'kitchen', name: 'Kitchen', icon: '🍳', color: '#F97316' },
+      { id: 'media_room', name: 'Media Room', icon: '📺', color: '#8B5CF6' },
+      { id: 'hallway', name: 'Hallway', icon: '🚪', color: '#6B7280' },
+      { id: 'entryway', name: 'Entry', icon: '🚶', color: '#84CC16' },
+      { id: 'master_bedroom', name: 'Master Bed', icon: '🛏️', color: '#EC4899' },
+      { id: 'guest_bedroom', name: 'Guest Bed', icon: '🛏️', color: '#14B8A6' },
+      { id: 'master_robe', name: 'Master Robe', icon: '👔', color: '#F472B6' },
+      { id: 'bathroom', name: 'Bathroom', icon: '🚿', color: '#06B6D4' },
+      { id: 'ensuite', name: 'Ensuite', icon: '🛁', color: '#0EA5E9' },
+      { id: 'laundry', name: 'Laundry', icon: '🧺', color: '#A855F7' },
+      { id: 'office', name: 'Office', icon: '💼', color: '#EAB308' },
+      { id: 'beauty_room', name: 'Beauty Room', icon: '💄', color: '#F43F5E' }
+    ];
+
+    // ============================================
+    // STATE
+    // ============================================
+    const state = {
+      currentRoom: null,
+      rooms: {},  // { roomId: { points: [{x,y}...] } }
+      currentPoints: [],  // Points being drawn
+      isDrawing: false,
+      selectedRoom: null,
+      imageLoaded: false,
+      viewBox: { width: 100, height: 100 },  // Use 0-100 percentage coordinates like dashboard
+      // Grid & snap settings
+      showGrid: false,
+      snapToGrid: true,
+      gridSize: 5  // Grid in percentage units (5% increments)
+    };
+
+    // ============================================
+    // DOM ELEMENTS
+    // ============================================
+    const $ = id => document.getElementById(id);
+    const svg = $('canvasSvg');
+    const gridLayer = $('gridLayer');
+    const roomsLayer = $('roomsLayer');
+    const labelsLayer = $('labelsLayer');
+    const previewLayer = $('previewLayer');
+    const placeholder = $('placeholder');
+    const backgroundImg = $('backgroundImg');
+    const canvasContainer = $('canvasContainer');
+    const statusText = $('statusText');
+    const coordsText = $('coordsText');
+    const toast = $('toast');
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    function init() {
+      renderRoomButtons();
+      bindCanvasEvents();
+      loadSavedConfig();
+      loadVacuumMap();
+    }
+
+    // ============================================
+    // LOAD VACUUM MAP FROM HA
+    // ============================================
+    let mapLoadAttempted = false;
+
+    async function loadVacuumMap() {
+      // Prevent multiple load attempts
+      if (state.imageLoaded) {
+        console.log('Map already loaded, skipping');
+        return;
+      }
+      if (mapLoadAttempted) {
+        console.log('Map load already attempted, skipping');
+        return;
+      }
+      mapLoadAttempted = true;
+
+      // Check if we got the map URL passed via URL parameter from parent dashboard
+      const urlParams = new URLSearchParams(window.location.search);
+      let mapUrl = urlParams.get('mapUrl');
+
+      if (!mapUrl) {
+        placeholder.innerHTML = `
+          <span style="font-size: 48px;">⚠️</span>
+          <span>No map URL provided</span>
+          <span style="font-size: 12px; color: #6B7280;">Close and reopen from dashboard</span>
+        `;
+        return;
+      }
+
+      console.log('Loading map from URL parameter');
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        console.log('Map image loaded:', img.width, 'x', img.height);
+
+        // Set the background image
+        backgroundImg.src = mapUrl;
+        backgroundImg.style.display = 'block';
+        backgroundImg.style.width = '100%';
+        backgroundImg.style.height = 'auto';
+        placeholder.style.display = 'none';
+
+        // Keep viewBox at 0-100 percentage coordinates (matching dashboard)
+        // Image maintains natural aspect ratio, SVG overlay matches with preserveAspectRatio="meet"
+
+        state.imageLoaded = true;
+        showToast('Map loaded! Select a room to start drawing', 'success');
+        renderRooms();
+      };
+      img.onerror = (e) => {
+        console.error('Failed to load map:', e);
+        placeholder.innerHTML = `
+          <span style="font-size: 48px;">⚠️</span>
+          <span>Could not load vacuum map</span>
+          <span style="font-size: 11px; color: #6B7280; word-break: break-all; max-width: 300px;">${mapUrl.substring(0, 100)}...</span>
+        `;
+        showToast('Failed to load vacuum map', 'error');
+      };
+      img.src = mapUrl;
+    }
+
+    function reloadMap() {
+      state.imageLoaded = false;
+      mapLoadAttempted = false;
+      placeholder.style.display = 'flex';
+      placeholder.innerHTML = `
+        <span style="font-size: 48px;">⏳</span>
+        <span>Reloading vacuum map...</span>
+      `;
+      backgroundImg.style.display = 'none';
+
+      // Get the original mapUrl and add a cache-buster without breaking existing params
+      const urlParams = new URLSearchParams(window.location.search);
+      let mapUrl = urlParams.get('mapUrl');
+      if (mapUrl) {
+        // Parse the URL properly to add cache-buster
+        const separator = mapUrl.includes('?') ? '&' : '?';
+        const newMapUrl = mapUrl + separator + '_cb=' + Date.now();
+        // Update the page URL with the new mapUrl
+        window.history.replaceState({}, '', window.location.pathname + '?mapUrl=' + encodeURIComponent(newMapUrl));
+      }
+      loadVacuumMap();
+    }
+
+    function renderRoomButtons() {
+      const grid = $('roomGrid');
+      grid.innerHTML = ROOMS.map(room => `
+        <button class="room-btn" data-room="${room.id}" onclick="selectRoom('${room.id}')">
+          <span class="icon">${room.icon}</span>
+          <span class="label">${room.name}</span>
+        </button>
+      `).join('');
+    }
+
+    function updateRoomButtons() {
+      ROOMS.forEach(room => {
+        const btn = document.querySelector(`.room-btn[data-room="${room.id}"]`);
+        if (btn) {
+          btn.classList.toggle('has-polygon', !!state.rooms[room.id]);
+          btn.classList.toggle('active', state.currentRoom === room.id);
+        }
+      });
+    }
+
+    // ============================================
+    // ROOM SELECTION
+    // ============================================
+    function selectRoom(roomId) {
+      // Save current drawing if any
+      if (state.currentPoints.length >= 3) {
+        finishPolygon();
+      }
+
+      state.currentRoom = roomId;
+      state.currentPoints = [];
+      state.isDrawing = true;
+      state.selectedRoom = null;
+
+      const room = ROOMS.find(r => r.id === roomId);
+      statusText.textContent = `Drawing ${room.name} - click to add points, click first point to close`;
+
+      updateRoomButtons();
+      renderPreview();
+      $('deleteBtn').disabled = true;
+    }
+
+    function selectExistingRoom(roomId) {
+      state.selectedRoom = roomId;
+      state.currentRoom = null;
+      state.currentPoints = [];
+      state.isDrawing = false;
+
+      const room = ROOMS.find(r => r.id === roomId);
+      statusText.textContent = `Editing ${room.name} - drag points to adjust, or click Delete to remove`;
+
+      updateRoomButtons();
+      renderRooms();
+      $('deleteBtn').disabled = false;
+    }
+
+    // ============================================
+    // CANVAS EVENTS
+    // ============================================
+    function bindCanvasEvents() {
+      svg.addEventListener('click', onCanvasClick);
+      svg.addEventListener('dblclick', onCanvasDoubleClick);
+      svg.addEventListener('mousemove', onCanvasMouseMove);
+    }
+
+    function getSVGPoint(e, applySnap = true) {
+      const rect = svg.getBoundingClientRect();
+      // Calculate 0-100 percentage coordinates directly
+      let x = (e.clientX - rect.left) / rect.width * 100;
+      let y = (e.clientY - rect.top) / rect.height * 100;
+
+      // Apply grid snapping if enabled
+      if (applySnap && state.snapToGrid) {
+        x = snapToGrid(x);
+        y = snapToGrid(y);
+      } else {
+        x = Math.round(x * 10) / 10;
+        y = Math.round(y * 10) / 10;
+      }
+
+      return { x, y };
+    }
+
+    function onCanvasClick(e) {
+      if (!state.imageLoaded) return;
+
+      const point = getSVGPoint(e);
+
+      // Check if clicking on existing room polygon
+      const clickedRoom = e.target.closest('.room-polygon');
+      if (clickedRoom && !state.isDrawing) {
+        selectExistingRoom(clickedRoom.dataset.room);
+        return;
+      }
+
+      if (!state.currentRoom) {
+        showToast('Select a room from the sidebar first', 'error');
+        return;
+      }
+
+      // Check if clicking on first point to close
+      if (state.currentPoints.length >= 3) {
+        const first = state.currentPoints[0];
+        const dist = Math.sqrt(Math.pow(point.x - first.x, 2) + Math.pow(point.y - first.y, 2));
+        if (dist < 15) {
+          finishPolygon();
+          return;
+        }
+      }
+
+      // Add point
+      state.currentPoints.push(point);
+      renderPreview();
+      updateUndoButton();
+
+      if (state.currentPoints.length === 1) {
+        showToast('Point added! Keep clicking to add more points');
+      } else if (state.currentPoints.length === 3) {
+        showToast('3+ points added. Click first point to close the shape');
+      }
+    }
+
+    function onCanvasDoubleClick(e) {
+      if (state.currentPoints.length >= 3) {
+        e.preventDefault();
+        finishPolygon();
+      }
+    }
+
+    function onCanvasMouseMove(e) {
+      const point = getSVGPoint(e);
+      const snapIndicator = state.snapToGrid ? ' [snap]' : '';
+      coordsText.textContent = `${point.x.toFixed(1)}, ${point.y.toFixed(1)}${snapIndicator}`;
+    }
+
+    // ============================================
+    // POLYGON DRAWING
+    // ============================================
+    function finishPolygon() {
+      if (state.currentPoints.length < 3) {
+        showToast('Need at least 3 points to create a room', 'error');
+        return;
+      }
+
+      // Points are already in 0-100 percentage coordinates, just round them
+      const percentPoints = state.currentPoints.map(p => ({
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10
+      }));
+
+      state.rooms[state.currentRoom] = percentPoints;
+
+      const room = ROOMS.find(r => r.id === state.currentRoom);
+      showToast(`${room.name} saved!`, 'success');
+
+      state.currentRoom = null;
+      state.currentPoints = [];
+      state.isDrawing = false;
+      statusText.textContent = 'Room saved. Select another room to continue';
+
+      updateRoomButtons();
+      renderRooms();
+      renderPreview();
+      saveToLocalStorage();
+    }
+
+    function renderPreview() {
+      previewLayer.innerHTML = '';
+
+      if (state.currentPoints.length === 0) return;
+
+      const room = ROOMS.find(r => r.id === state.currentRoom);
+      if (!room) return;
+
+      // Draw lines between points
+      if (state.currentPoints.length >= 2) {
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.classList.add('preview-line');
+        polyline.setAttribute('points', state.currentPoints.map(p => `${p.x},${p.y}`).join(' '));
+        polyline.style.stroke = room.color;
+        previewLayer.appendChild(polyline);
+      }
+
+      // Draw points (smaller sizes)
+      state.currentPoints.forEach((point, i) => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.classList.add('preview-point');
+        if (i === 0) circle.classList.add('first');
+        circle.setAttribute('cx', point.x);
+        circle.setAttribute('cy', point.y);
+        circle.setAttribute('r', i === 0 && state.currentPoints.length >= 3 ? 1.2 : 0.8);
+        circle.setAttribute('fill', room.color);
+        previewLayer.appendChild(circle);
+      });
+    }
+
+    function renderRooms() {
+      roomsLayer.innerHTML = '';
+      labelsLayer.innerHTML = '';
+
+      // Create a layer for edit points (on top of labels)
+      let editPointsLayer = $('editPointsLayer');
+      if (!editPointsLayer) {
+        editPointsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        editPointsLayer.id = 'editPointsLayer';
+        svg.appendChild(editPointsLayer);
+      }
+      editPointsLayer.innerHTML = '';
+
+      Object.entries(state.rooms).forEach(([roomId, points]) => {
+        const room = ROOMS.find(r => r.id === roomId);
+        if (!room || points.length < 3) return;
+
+        // Points are already in 0-100 coordinates matching the viewBox - use directly
+        // Draw polygon
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.classList.add('room-polygon');
+        if (state.selectedRoom === roomId) polygon.classList.add('selected');
+        polygon.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(' '));
+        polygon.setAttribute('fill', room.color);
+        polygon.setAttribute('stroke', room.color);
+        polygon.dataset.room = roomId;
+        roomsLayer.appendChild(polygon);
+
+        // Draw label at centroid
+        const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+        const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.classList.add('room-label');
+        label.setAttribute('x', cx);
+        label.setAttribute('y', cy);
+        label.textContent = room.name;
+        labelsLayer.appendChild(label);
+
+        // Draw draggable edit points for selected room
+        if (state.selectedRoom === roomId) {
+          points.forEach((point, index) => {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.classList.add('edit-point');
+            circle.setAttribute('cx', point.x);
+            circle.setAttribute('cy', point.y);
+            circle.setAttribute('r', 0.8);
+            circle.dataset.room = roomId;
+            circle.dataset.pointIndex = index;
+
+            // Make draggable
+            circle.addEventListener('mousedown', startDragPoint);
+
+            editPointsLayer.appendChild(circle);
+          });
+        }
+      });
+    }
+
+    // Drag state
+    let dragState = {
+      isDragging: false,
+      roomId: null,
+      pointIndex: null,
+      startX: 0,
+      startY: 0
+    };
+
+    function startDragPoint(e) {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const circle = e.target;
+      dragState.isDragging = true;
+      dragState.roomId = circle.dataset.room;
+      dragState.pointIndex = parseInt(circle.dataset.pointIndex);
+
+      circle.classList.add('dragging');
+
+      // Add move and up listeners to document
+      document.addEventListener('mousemove', dragPoint);
+      document.addEventListener('mouseup', endDragPoint);
+    }
+
+    function dragPoint(e) {
+      if (!dragState.isDragging) return;
+
+      // getSVGPoint already returns 0-100 coordinates
+      const point = getSVGPoint(e);
+
+      // Update the point directly (already in percentage)
+      state.rooms[dragState.roomId][dragState.pointIndex] = {
+        x: parseFloat(point.x.toFixed(1)),
+        y: parseFloat(point.y.toFixed(1))
+      };
+
+      renderRooms();
+
+      // Re-add dragging class to the circle
+      const circles = document.querySelectorAll('.edit-point');
+      circles.forEach(c => {
+        if (c.dataset.room === dragState.roomId &&
+            parseInt(c.dataset.pointIndex) === dragState.pointIndex) {
+          c.classList.add('dragging');
+        }
+      });
+    }
+
+    function endDragPoint(e) {
+      if (!dragState.isDragging) return;
+
+      dragState.isDragging = false;
+
+      // Remove dragging class
+      document.querySelectorAll('.edit-point.dragging').forEach(c => {
+        c.classList.remove('dragging');
+      });
+
+      // Remove listeners
+      document.removeEventListener('mousemove', dragPoint);
+      document.removeEventListener('mouseup', endDragPoint);
+
+      // Save changes
+      saveToLocalStorage();
+
+      showToast('Point moved', 'success');
+    }
+
+    // ============================================
+    // GRID FUNCTIONS
+    // ============================================
+    function toggleGrid() {
+      state.showGrid = $('showGridToggle').checked;
+      renderGrid();
+    }
+
+    function toggleSnap() {
+      state.snapToGrid = $('snapToggle').checked;
+    }
+
+    function updateGridSize() {
+      state.gridSize = parseInt($('gridSizeSelect').value);
+      if (state.showGrid) {
+        renderGrid();
+      }
+    }
+
+    function renderGrid() {
+      gridLayer.innerHTML = '';
+      if (!state.showGrid || !state.imageLoaded) return;
+
+      const gridSize = state.gridSize;
+
+      // Vertical lines (0-100%)
+      for (let x = 0; x <= 100; x += gridSize) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('grid-line');
+        if (x % 10 === 0) line.classList.add('major');  // Major line every 10%
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', 0);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', 100);
+        gridLayer.appendChild(line);
+      }
+
+      // Horizontal lines (0-100%)
+      for (let y = 0; y <= 100; y += gridSize) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('grid-line');
+        if (y % 10 === 0) line.classList.add('major');  // Major line every 10%
+        line.setAttribute('x1', 0);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', 100);
+        line.setAttribute('y2', y);
+        gridLayer.appendChild(line);
+      }
+    }
+
+    function snapToGrid(value) {
+      if (!state.snapToGrid) return value;
+      return Math.round(value / state.gridSize) * state.gridSize;
+    }
+
+    function undoLastPoint() {
+      if (state.currentPoints.length > 0) {
+        state.currentPoints.pop();
+        renderPreview();
+        updateUndoButton();
+        if (state.currentPoints.length === 0) {
+          statusText.textContent = `Drawing ${ROOMS.find(r => r.id === state.currentRoom)?.name || 'room'} - click to add points`;
+        }
+      }
+    }
+
+    function updateUndoButton() {
+      const undoBtn = $('undoBtn');
+      if (undoBtn) {
+        undoBtn.disabled = state.currentPoints.length === 0;
+      }
+    }
+
+    // ============================================
+    // IMAGE UPLOAD
+    // ============================================
+    function bindImageUpload() {
+      $('imageUpload').addEventListener('change', handleImageUpload);
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          backgroundImg.src = event.target.result;
+          backgroundImg.style.display = 'block';
+          backgroundImg.style.width = '100%';
+          backgroundImg.style.height = 'auto';
+          placeholder.style.display = 'none';
+
+          // Keep viewBox at 0-100 percentage coordinates (matching dashboard)
+          // Image maintains natural aspect ratio, SVG overlay matches with preserveAspectRatio="meet"
+
+          state.imageLoaded = true;
+          showToast('Image loaded! Select a room to start drawing', 'success');
+          renderRooms();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ============================================
+    // ACTIONS
+    // ============================================
+    function deleteSelectedRoom() {
+      if (!state.selectedRoom) return;
+
+      const room = ROOMS.find(r => r.id === state.selectedRoom);
+      delete state.rooms[state.selectedRoom];
+      state.selectedRoom = null;
+
+      showToast(`${room.name} deleted`, 'success');
+      statusText.textContent = 'Room deleted. Select another room to continue';
+
+      updateRoomButtons();
+      renderRooms();
+      saveToLocalStorage();
+      $('deleteBtn').disabled = true;
+    }
+
+    function clearAll() {
+      if (!confirm('Clear all room polygons?')) return;
+
+      state.rooms = {};
+      state.currentPoints = [];
+      state.currentRoom = null;
+      state.selectedRoom = null;
+
+      updateRoomButtons();
+      renderRooms();
+      renderPreview();
+      saveToLocalStorage();
+      showToast('All rooms cleared', 'success');
+    }
+
+    // ============================================
+    // EXPORT
+    // ============================================
+    function showExportModal() {
+      const yaml = generateYaml();
+      $('exportYaml').value = yaml;
+      $('exportModal').classList.add('show');
+    }
+
+    function closeModal() {
+      $('exportModal').classList.remove('show');
+    }
+
+    function generateYaml() {
+      let yaml = 'room_polygons:\n';
+
+      Object.entries(state.rooms).forEach(([roomId, points]) => {
+        yaml += `  ${roomId}:\n`;
+        points.forEach(p => {
+          yaml += `    - { x: ${p.x}, y: ${p.y} }\n`;
+        });
+      });
+
+      return yaml;
+    }
+
+    function copyToClipboard() {
+      const yaml = $('exportYaml').value;
+      navigator.clipboard.writeText(yaml).then(() => {
+        showToast('Copied to clipboard!', 'success');
+      });
+    }
+
+    // ============================================
+    // PERSISTENCE
+    // ============================================
+    function saveToLocalStorage() {
+      localStorage.setItem('vacuumRoomConfig', JSON.stringify(state.rooms));
+    }
+
+    function loadSavedConfig() {
+      const saved = localStorage.getItem('vacuumRoomConfig');
+      if (saved) {
+        try {
+          state.rooms = JSON.parse(saved);
+          updateRoomButtons();
+          renderRooms();
+        } catch (e) {
+          console.error('Failed to load saved config:', e);
+        }
+      }
+    }
+
+    function saveConfig() {
+      saveToLocalStorage();
+      showToast('Configuration saved locally!', 'success');
+    }
+
+    // ============================================
+    // TOAST
+    // ============================================
+    function showToast(message, type = '') {
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // ============================================
+    // START
+    // ============================================
+    init();
+  </script>
+</body>
+</html>

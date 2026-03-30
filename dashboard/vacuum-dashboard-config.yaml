@@ -1,0 +1,316 @@
+# Vacuum Dashboard - Complete Configuration
+# ==========================================
+# Copy this to your Home Assistant dashboard
+#
+# Prerequisites:
+# 1. Install vacuum-dashboard.js as a Lovelace resource
+# 2. Create all helpers from vacuum-helpers.yaml
+# 3. Add automations from vacuum-room-history-automation.yaml
+
+type: custom:vacuum-dashboard
+title: Alfonso Robot Vacuum
+subtitle: Ecovacs Deebot X2 Omni
+icon: "\U0001F916"
+
+# ==========================================
+# CORE ENTITIES
+# ==========================================
+
+vacuum_entity: vacuum.alfonso
+battery_entity: sensor.alfonso_battery
+map_entity: image.alfonso_map
+
+# Cleaning stats (shown during active cleaning)
+area_cleaned_entity: sensor.alfonso_area_cleaned
+cleaning_duration_entity: sensor.alfonso_cleaning_duration
+
+# Mop attachment detection
+mop_attached_entity: binary_sensor.alfonso_mop_attached
+
+# ==========================================
+# MAINTENANCE / CONSUMABLES
+# ==========================================
+
+# Lifespan sensors (percentage remaining)
+filter_lifespan_entity: sensor.alfonso_filter_lifespan
+main_brush_lifespan_entity: sensor.alfonso_main_brush_lifespan
+side_brush_lifespan_entity: sensor.alfonso_side_brush_lifespan
+
+# Replacement tracking (optional - for "days since replaced" display)
+filter_replaced_entity: input_datetime.vacuum_filter_last_replaced
+main_brush_replaced_entity: input_datetime.vacuum_main_brush_last_replaced
+side_brush_replaced_entity: input_datetime.vacuum_side_brush_last_replaced
+
+# Lifetime statistics
+total_cleanings_entity: sensor.alfonso_total_cleanings
+total_area_entity: sensor.alfonso_total_area_cleaned
+total_duration_entity: sensor.alfonso_total_cleaning_duration
+
+# Error status
+error_entity: sensor.alfonso_error
+
+# ==========================================
+# SETTINGS ENTITIES
+# ==========================================
+
+# Selectors
+fan_speed_entity: input_select.alfonso_fan_speed_selector
+work_mode_entity: select.alfonso_work_mode
+water_flow_entity: select.alfonso_water_flow_level
+volume_entity: number.alfonso_volume
+
+# Feature toggles
+continuous_entity: switch.alfonso_continuous_cleaning
+carpet_boost_entity: switch.alfonso_carpet_auto_boost_suction
+true_detect_entity: switch.alfonso_true_detect
+advanced_entity: switch.alfonso_advanced_mode
+clean_preference_entity: switch.alfonso_clean_preference
+
+# ==========================================
+# SCHEDULE ENTITIES
+# ==========================================
+
+# Schedule times
+schedule_time_entity: input_datetime.vacuum_schedule_time
+schedule_time_nightshift_entity: input_datetime.vacuum_schedule_time_nightshift
+
+# Night shift mode
+nightshift_entity: input_boolean.julia_nightshift
+
+# Schedule mode (Vacuum Only / Mop Only / Vacuum & Mop)
+schedule_mode_entity: input_select.vacuum_schedule_mode
+
+# Schedule toggles
+schedule_daily_entity: input_boolean.vacuum_schedule_daily
+zone_schedule_enabled_entity: input_boolean.vacuum_zone_schedule_enabled
+
+# Day-of-week schedule toggles
+schedule_monday_entity: input_boolean.vacuum_schedule_monday
+schedule_tuesday_entity: input_boolean.vacuum_schedule_tuesday
+schedule_wednesday_entity: input_boolean.vacuum_schedule_wednesday
+schedule_thursday_entity: input_boolean.vacuum_schedule_thursday
+schedule_friday_entity: input_boolean.vacuum_schedule_friday
+schedule_saturday_entity: input_boolean.vacuum_schedule_saturday
+schedule_sunday_entity: input_boolean.vacuum_schedule_sunday
+
+# DND / Schedule Override
+skip_next_clean_entity: input_boolean.vacuum_skip_next_clean
+quiet_hours_enabled_entity: input_boolean.vacuum_quiet_hours_enabled
+quiet_hours_start_entity: input_datetime.vacuum_quiet_start
+quiet_hours_end_entity: input_datetime.vacuum_quiet_end
+
+# ==========================================
+# ROOM CONFIGURATION
+# ==========================================
+
+rooms:
+  # Living Areas
+  - id: living_room
+    name: Living Room
+    icon: "\U0001F6CB"
+    input_boolean: input_boolean.clean_room_living_room
+    schedule_boolean: input_boolean.schedule_room_living_room
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_living_room
+    category: living
+
+  - id: kitchen
+    name: Kitchen
+    icon: "\U0001F373"
+    input_boolean: input_boolean.clean_room_kitchen
+    schedule_boolean: input_boolean.schedule_room_kitchen
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_kitchen
+    category: living
+
+  - id: media_room
+    name: Media Room
+    icon: "\U0001F4FA"
+    input_boolean: input_boolean.clean_room_media_room
+    schedule_boolean: input_boolean.schedule_room_media_room
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_media_room
+    category: living
+
+  - id: hallway
+    name: Hallway
+    icon: "\U0001F6B6"
+    input_boolean: input_boolean.clean_room_hallway
+    schedule_boolean: input_boolean.schedule_room_hallway
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_hallway
+    category: living
+
+  - id: entryway
+    name: Entry
+    icon: "\U0001F6AA"
+    input_boolean: input_boolean.clean_room_entryway
+    schedule_boolean: input_boolean.schedule_room_entryway
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_entryway
+    category: living
+
+  # Bedrooms
+  - id: master_bedroom
+    name: Master Bed
+    icon: "\U0001F6CF"
+    input_boolean: input_boolean.clean_room_master_bedroom
+    schedule_boolean: input_boolean.schedule_room_master_bedroom
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_master_bedroom
+    category: bedrooms
+
+  - id: guest_bedroom
+    name: Guest Bed
+    icon: "\U0001F6CF"
+    input_boolean: input_boolean.clean_room_guest_bedroom
+    schedule_boolean: input_boolean.schedule_room_guest_bedroom
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_guest_bedroom
+    category: bedrooms
+
+  - id: master_robe
+    name: Master Robe
+    icon: "\U0001F454"
+    input_boolean: input_boolean.clean_room_master_robe
+    schedule_boolean: input_boolean.schedule_room_master_robe
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_master_robe
+    category: bedrooms
+
+  # Bathrooms
+  - id: bathroom
+    name: Bathroom
+    icon: "\U0001F6BF"
+    input_boolean: input_boolean.clean_room_bathroom
+    schedule_boolean: input_boolean.schedule_room_bathroom
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_bathroom
+    category: bathrooms
+
+  - id: ensuite
+    name: Ensuite
+    icon: "\U0001F6BF"
+    input_boolean: input_boolean.clean_room_ensuite
+    schedule_boolean: input_boolean.schedule_room_ensuite
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_ensuite
+    category: bathrooms
+
+  - id: laundry
+    name: Laundry
+    icon: "\U0001F9FA"
+    input_boolean: input_boolean.clean_room_laundry
+    schedule_boolean: input_boolean.schedule_room_laundry
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_laundry
+    category: bathrooms
+
+  # Other
+  - id: office
+    name: Office
+    icon: "\U0001F4BB"
+    input_boolean: input_boolean.clean_room_office
+    schedule_boolean: input_boolean.schedule_room_office
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_office
+    category: other
+
+  - id: beauty_room
+    name: Beauty Room
+    icon: "\U0001F484"
+    input_boolean: input_boolean.clean_room_beauty_room
+    schedule_boolean: input_boolean.schedule_room_beauty_room
+    last_cleaned_entity: input_datetime.vacuum_last_cleaned_beauty_room
+    category: other
+
+# ==========================================
+# PRESET CONFIGURATIONS
+# ==========================================
+
+presets:
+  - id: bedrooms
+    name: Bedrooms
+    icon: "\U0001F6CF"
+    rooms:
+      - master_bedroom
+      - guest_bedroom
+      - master_robe
+    script: script.clean_bedrooms_only
+
+  - id: living
+    name: Living Areas
+    icon: "\U0001F6CB"
+    rooms:
+      - living_room
+      - media_room
+      - hallway
+      - entryway
+    script: script.clean_living_areas
+
+  - id: bathrooms
+    name: Bathrooms
+    icon: "\U0001F6BF"
+    rooms:
+      - bathroom
+      - ensuite
+      - laundry
+    script: script.clean_bathrooms_only
+
+  - id: kitchen
+    name: Kitchen
+    icon: "\U0001F373"
+    rooms:
+      - kitchen
+    script: script.clean_kitchen_only
+
+# ==========================================
+# SCRIPTS (for card actions)
+# ==========================================
+
+scripts:
+  start_cleaning: script.vacuum_smart_start
+  pause_resume: script.vacuum_pause_resume_toggle
+  stop_and_reset: script.stop_vacuum_and_reset_rooms
+  clean_selected: script.clean_selected_rooms
+
+# ==========================================
+# DISPLAY OPTIONS
+# ==========================================
+
+# Show/hide sections
+show_map: true
+show_stats: true
+show_presets: true
+show_last_cleaned: true
+show_maintenance_alerts: true
+
+# Maintenance alert thresholds
+consumable_warning_threshold: 30
+consumable_critical_threshold: 15
+
+# Room freshness thresholds (for color coding)
+room_freshness:
+  fresh_hours: 24      # Green - cleaned within 24 hours
+  moderate_hours: 72   # Yellow - cleaned within 72 hours
+  overdue_hours: 168   # Red - more than 7 days ago
+
+# ==========================================
+# INTERACTIVE MAP (optional)
+# ==========================================
+
+# Enable clickable room zones on the map
+# Coordinates are percentages (0-100) of map image dimensions
+# Edit these to match your map layout
+
+map_zones_enabled: false
+
+# map_zones:
+#   living_room:
+#     polygon: [[10, 20], [40, 20], [40, 50], [10, 50]]
+#     color: "rgba(59, 130, 246, 0.3)"
+#   kitchen:
+#     polygon: [[45, 20], [70, 20], [70, 50], [45, 50]]
+#     color: "rgba(249, 115, 22, 0.3)"
+#   master_bedroom:
+#     polygon: [[10, 55], [35, 55], [35, 85], [10, 85]]
+#     color: "rgba(34, 197, 94, 0.3)"
+#   # Add more rooms as needed...
+
+# ==========================================
+# CARD STYLING (optional overrides)
+# ==========================================
+
+# styles:
+#   card_background: "linear-gradient(145deg, #1a1f2e 0%, #0f1419 100%)"
+#   accent_color: "#3B82F6"
+#   text_primary: "#F9FAFB"
+#   text_secondary: "#9CA3AF"

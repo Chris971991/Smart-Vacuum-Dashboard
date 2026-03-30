@@ -1,0 +1,171 @@
+# Vacuum Room History Automation
+# ===============================
+# Add this via Home Assistant UI: Settings > Automations > Create Automation > Edit in YAML
+# Copy the content between the --- markers for each automation
+
+# -----------------------------------
+# AUTOMATION 1: Update Room Cleaning History
+# -----------------------------------
+alias: "Vacuum - Update Room Cleaning History"
+description: "Updates the last cleaned timestamp for rooms when vacuum completes cleaning"
+mode: single
+triggers:
+  - trigger: state
+    entity_id: vacuum.alfonso
+    to: "docked"
+    from:
+      - "cleaning"
+      - "returning"
+  - trigger: state
+    entity_id: vacuum.alfonso
+    to: "returning"
+    from: "cleaning"
+conditions:
+  - condition: template
+    value_template: >
+      {{ trigger.from_state.state == 'cleaning' or
+         (trigger.to_state.state == 'docked' and trigger.from_state.state == 'returning') }}
+actions:
+  # Living Room
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_living_room
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_living_room
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Kitchen
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_kitchen
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_kitchen
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Master Bedroom
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_master_bedroom
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_master_bedroom
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Guest Bedroom
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_guest_bedroom
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_guest_bedroom
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Bathroom
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_bathroom
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_bathroom
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Ensuite
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_ensuite
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_ensuite
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Media Room
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_media_room
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_media_room
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Office
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_office
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_office
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Beauty Room
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_beauty_room
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_beauty_room
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Entry
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_entryway
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_entryway
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Hallway
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_hallway
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_hallway
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Laundry
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_laundry
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_laundry
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+  # Master Robe
+  - if:
+      - condition: state
+        entity_id: input_boolean.clean_room_master_robe
+        state: "on"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.vacuum_last_cleaned_master_robe
+        data:
+          datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"

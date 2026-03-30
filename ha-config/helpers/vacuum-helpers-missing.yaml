@@ -1,0 +1,179 @@
+# Vacuum Dashboard - MISSING Helpers Only
+# ========================================
+# Add these to your configuration.yaml
+# You already have: clean_room_*, schedule day toggles, schedule times, julia_nightshift
+#
+# Missing helpers needed for the new dashboard features:
+
+# ==========================================
+# ADD TO input_boolean: section
+# ==========================================
+
+input_boolean:
+  # Skip the next scheduled vacuum clean (DND feature)
+  vacuum_skip_next_clean:
+    name: "Vacuum - Skip Next Scheduled Clean"
+    icon: mdi:calendar-remove
+
+  # Enable quiet hours (no cleaning during specified times)
+  vacuum_quiet_hours_enabled:
+    name: "Vacuum - Quiet Hours Enabled"
+    icon: mdi:volume-off
+
+  # Scheduled room selection (separate from immediate cleaning)
+  schedule_room_living_room:
+    name: "Schedule Room - Living Room"
+    icon: mdi:sofa
+  schedule_room_kitchen:
+    name: "Schedule Room - Kitchen"
+    icon: mdi:stove
+  schedule_room_media_room:
+    name: "Schedule Room - Media Room"
+    icon: mdi:television
+  schedule_room_hallway:
+    name: "Schedule Room - Hallway"
+    icon: mdi:door-open
+  schedule_room_entryway:
+    name: "Schedule Room - Entry"
+    icon: mdi:door
+  schedule_room_master_bedroom:
+    name: "Schedule Room - Master Bedroom"
+    icon: mdi:bed-king
+  schedule_room_guest_bedroom:
+    name: "Schedule Room - Guest Bedroom"
+    icon: mdi:bed
+  schedule_room_master_robe:
+    name: "Schedule Room - Master Robe"
+    icon: mdi:hanger
+  schedule_room_bathroom:
+    name: "Schedule Room - Bathroom"
+    icon: mdi:shower
+  schedule_room_ensuite:
+    name: "Schedule Room - Ensuite"
+    icon: mdi:shower-head
+  schedule_room_laundry:
+    name: "Schedule Room - Laundry"
+    icon: mdi:washing-machine
+  schedule_room_office:
+    name: "Schedule Room - Office"
+    icon: mdi:desk
+  schedule_room_beauty_room:
+    name: "Schedule Room - Beauty Room"
+    icon: mdi:mirror
+
+
+# ==========================================
+# ADD TO input_datetime: section
+# ==========================================
+
+input_datetime:
+  # Quiet hours time range
+  vacuum_quiet_start:
+    name: "Vacuum - Quiet Hours Start"
+    has_time: true
+    has_date: false
+    icon: mdi:moon-waning-crescent
+
+  vacuum_quiet_end:
+    name: "Vacuum - Quiet Hours End"
+    has_time: true
+    has_date: false
+    icon: mdi:weather-sunny
+
+  # Consumable replacement tracking
+  vacuum_filter_last_replaced:
+    name: "Vacuum - Filter Last Replaced"
+    has_date: true
+    has_time: false
+    icon: mdi:air-filter
+
+  vacuum_main_brush_last_replaced:
+    name: "Vacuum - Main Brush Last Replaced"
+    has_date: true
+    has_time: false
+    icon: mdi:broom
+
+  vacuum_side_brush_last_replaced:
+    name: "Vacuum - Side Brush Last Replaced"
+    has_date: true
+    has_time: false
+    icon: mdi:rotate-left
+
+  # Room cleaning history (when was each room last cleaned)
+  vacuum_last_cleaned_living_room:
+    name: "Vacuum - Last Cleaned Living Room"
+    has_date: true
+    has_time: true
+    icon: mdi:sofa
+
+  vacuum_last_cleaned_kitchen:
+    name: "Vacuum - Last Cleaned Kitchen"
+    has_date: true
+    has_time: true
+    icon: mdi:stove
+
+  vacuum_last_cleaned_master_bedroom:
+    name: "Vacuum - Last Cleaned Master Bedroom"
+    has_date: true
+    has_time: true
+    icon: mdi:bed-king
+
+  vacuum_last_cleaned_guest_bedroom:
+    name: "Vacuum - Last Cleaned Guest Bedroom"
+    has_date: true
+    has_time: true
+    icon: mdi:bed
+
+  vacuum_last_cleaned_bathroom:
+    name: "Vacuum - Last Cleaned Bathroom"
+    has_date: true
+    has_time: true
+    icon: mdi:shower
+
+  vacuum_last_cleaned_ensuite:
+    name: "Vacuum - Last Cleaned Ensuite"
+    has_date: true
+    has_time: true
+    icon: mdi:shower-head
+
+  vacuum_last_cleaned_media_room:
+    name: "Vacuum - Last Cleaned Media Room"
+    has_date: true
+    has_time: true
+    icon: mdi:television
+
+  vacuum_last_cleaned_office:
+    name: "Vacuum - Last Cleaned Office"
+    has_date: true
+    has_time: true
+    icon: mdi:desk
+
+  vacuum_last_cleaned_beauty_room:
+    name: "Vacuum - Last Cleaned Beauty Room"
+    has_date: true
+    has_time: true
+    icon: mdi:mirror
+
+  vacuum_last_cleaned_entryway:
+    name: "Vacuum - Last Cleaned Entry"
+    has_date: true
+    has_time: true
+    icon: mdi:door
+
+  vacuum_last_cleaned_hallway:
+    name: "Vacuum - Last Cleaned Hallway"
+    has_date: true
+    has_time: true
+    icon: mdi:door-open
+
+  vacuum_last_cleaned_laundry:
+    name: "Vacuum - Last Cleaned Laundry"
+    has_date: true
+    has_time: true
+    icon: mdi:washing-machine
+
+  vacuum_last_cleaned_master_robe:
+    name: "Vacuum - Last Cleaned Master Robe"
+    has_date: true
+    has_time: true
+    icon: mdi:hanger
